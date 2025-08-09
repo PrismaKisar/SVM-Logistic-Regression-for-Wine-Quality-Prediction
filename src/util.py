@@ -1,5 +1,27 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def plot_correlation_matrix(df, correlation_threshold):
+    correlation_matrix = df.corr(numeric_only=True)
+
+    triangle_mask = np.triu(np.ones_like(correlation_matrix, dtype=bool))
+    weak_corr_mask = abs(correlation_matrix) < correlation_threshold
+    combined_mask = triangle_mask | weak_corr_mask
+
+    plt.figure(figsize=(10, 6))
+    sns.heatmap(correlation_matrix,
+                mask=combined_mask,
+                annot=True,
+                cmap='coolwarm',
+                center=0)
+
+    plt.title(f'Strong Correlations (>{correlation_threshold})')
+    plt.tight_layout()
+    plt.show()
+
+
 
 class StandardScaler:
     def __init__(self):

@@ -1,4 +1,5 @@
 import numpy as np
+
 class SVM:
     def __init__(self, n_iters=1000, lambda_param=0.01, random_seed=42):
         self.n_iters = n_iters
@@ -28,4 +29,5 @@ class SVM:
             self.w = self.w - eta * gradient
     
     def predict(self, X):
-        pass
+        return np.sign(np.dot(X, self.w))
+    

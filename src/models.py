@@ -39,7 +39,23 @@ class LogisticRegression:
         self.w = None
 
     def fit(self, X, y):
-        pass
+        bias_column = np.ones((X.shape[0], 1))
+        X = np.hstack([bias_column, X])
+        n_samples, n_features = X.shape
+
+        self.w = np.zeros(n_features)
+
+        for _ in range(self.n_iters):
+            for t in range(n_samples):
+                x_t = X[t]
+                y_t = y[t]
+
+                gradient = -self.logistic(-y_t * np.dot(self.w, x_t)) * y_t * x_t + self.lambda_param * self.w
+                self.w -= self.learning_rate * gradient
+
+    def logistic(z):
+    def logistic(self, z):
+        return 1 / (1 + np.e**-z)
 
     def predict(self, X):
         pass

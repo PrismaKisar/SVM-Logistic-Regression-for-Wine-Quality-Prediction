@@ -31,3 +31,16 @@ class SVM:
     def predict(self, X):
         return np.sign(np.dot(X, self.w))
     
+class LogisticRegression:
+    def __init__(self, n_iters=1000, lambda_param=0.01, learning_rate=0.01):
+        self.n_iters = n_iters
+        self.lambda_param = lambda_param
+        self.learning_rate = learning_rate
+        self.w = None
+
+    def fit(self, X, y):
+        pass
+
+    def predict(self, X):
+        pass
+    

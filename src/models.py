@@ -53,10 +53,13 @@ class LogisticRegression:
                 gradient = -self.logistic(-y_t * np.dot(self.w, x_t)) * y_t * x_t + self.lambda_param * self.w
                 self.w -= self.learning_rate * gradient
 
-    def logistic(z):
     def logistic(self, z):
         return 1 / (1 + np.e**-z)
 
     def predict(self, X):
-        pass
+        bias_column = np.ones((X.shape[0], 1))
+        X = np.hstack([bias_column, X])
+    
+        y = self.logistic(np.dot(X, self.w))
+        return np.where(y >= 0.5, 1, -1)
     

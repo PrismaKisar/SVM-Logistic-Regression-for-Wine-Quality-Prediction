@@ -52,22 +52,34 @@ def cross_val_score(model, X, y, cv=5, shuffle=True, random_state=42, metric='ac
 
 
 def grid_search_cv(model_class, param_grid, X, y, cv=5):
-    pass
     param_names = list(param_grid.keys())
     param_values = list(param_grid.values())
     
-    best_score = 0
+    best_f1 = 0
     best_params = None
+    best_metrics = None
     
     for combination in product(*param_values):
         params = dict(zip(param_names, combination))
         model = model_class(**params)
         
-        scores = cross_val_score(model, X, y, cv=cv)
-        mean_score = np.mean(scores)
+        precision_scores = cross_val_score(model, X, y, cv=cv, metric='precision')
+        recall_scores = cross_val_score(model, X, y, cv=cv, metric='recall')
+        f1_scores = cross_val_score(model, X, y, cv=cv, metric='f1')
                 
-        if mean_score > best_score:
-            best_score = mean_score
+        mean_precision = np.mean(precision_scores)
+        mean_recall = np.mean(recall_scores)
+        mean_f1 = np.mean(f1_scores)
+        
+        if mean_f1 > best_f1:
+            best_f1 = mean_f1
             best_params = params
+            best_metrics = {
+                'precision': mean_precision,
+                'recall': mean_recall,
+                'f1': mean_f1
+            }
     
-    return best_params, best_score
+    return best_params, best_metrics
+
+

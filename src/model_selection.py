@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import product
 
 def cross_val_score(model, X, y, cv=5, shuffle=True, random_state=42):
     pass
@@ -36,3 +37,21 @@ def cross_val_score(model, X, y, cv=5, shuffle=True, random_state=42):
 
 def grid_search_cv(model_class, param_grid, X, y, cv=5):
     pass
+    param_names = list(param_grid.keys())
+    param_values = list(param_grid.values())
+    
+    best_score = 0
+    best_params = None
+    
+    for combination in product(*param_values):
+        params = dict(zip(param_names, combination))
+        model = model_class(**params)
+        
+        scores = cross_val_score(model, X, y, cv=cv)
+        mean_score = np.mean(scores)
+                
+        if mean_score > best_score:
+            best_score = mean_score
+            best_params = params
+    
+    return best_params, best_score

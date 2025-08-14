@@ -1,8 +1,7 @@
 import numpy as np
 from itertools import product
 
-def cross_val_score(model, X, y, cv=5, shuffle=True, random_state=42):
-    pass
+def cross_val_score(model, X, y, cv=5, shuffle=True, random_state=42, metric='accuracy'):
     n_samples = len(X)
     indices = np.arange(n_samples)
     
@@ -21,15 +20,32 @@ def cross_val_score(model, X, y, cv=5, shuffle=True, random_state=42):
         end_idx = start_idx + current_fold_size
         
         test_indices = indices[start_idx:end_idx]
-        
         train_indices = np.concatenate([indices[:start_idx], indices[end_idx:]])
         
         model.fit(X[train_indices], y[train_indices])
         predictions = model.predict(X[test_indices])
+        y_test = y[test_indices]
 
-        accuracy = np.mean(predictions == y[test_indices])
-        scores.append(accuracy)
+        if metric == 'accuracy':
+            score = np.mean(predictions == y_test)
+        elif metric == 'precision':
+            tp = np.sum((predictions == 1) & (y_test == 1))
+            fp = np.sum((predictions == 1) & (y_test == 0))
+            score = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        elif metric == 'recall':
+            tp = np.sum((predictions == 1) & (y_test == 1))
+            fn = np.sum((predictions == 0) & (y_test == 1))
+            score = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        elif metric == 'f1':
+            tp = np.sum((predictions == 1) & (y_test == 1))
+            fp = np.sum((predictions == 1) & (y_test == 0))
+            fn = np.sum((predictions == 0) & (y_test == 1))
+            
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+            score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
         
+        scores.append(score)
         start_idx = end_idx
     
     return scores

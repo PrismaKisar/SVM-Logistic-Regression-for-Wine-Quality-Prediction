@@ -32,3 +32,7 @@ def cross_val_score(model, X, y, cv=5, shuffle=True, random_state=42):
         start_idx = end_idx
     
     return scores
+
+
+def grid_search_cv(model_class, param_grid, X, y, cv=5):
+    pass

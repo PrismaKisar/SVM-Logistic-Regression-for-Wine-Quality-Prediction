@@ -5,7 +5,7 @@ class SVM:
         self.n_iters = n_iters
         self.lambda_param = lambda_param
         self.random_seed = random_seed
-        self.w = None
+        self._w = None
     
     def fit(self, X, y):
         if X.shape[0] != y.shape[0]:
@@ -15,7 +15,7 @@ class SVM:
             raise ValueError("y must contain only -1 and 1 values")
 
         n_samples, n_features = X.shape
-        self.w = np.zeros(n_features)
+        self._w = np.zeros(n_features)
         
         rng = np.random.RandomState(self.random_seed)
         
@@ -25,20 +25,20 @@ class SVM:
             y_t = y[idx]
             
             eta = 1 / (self.lambda_param * t)
-            margin = y_t * np.dot(self.w, x_t)
+            margin = y_t * np.dot(self._w, x_t)
 
             if margin < 1:
-                gradient = self.lambda_param * self.w - y_t * x_t
+                gradient = self.lambda_param * self._w - y_t * x_t
             else:
-                gradient = self.lambda_param * self.w
+                gradient = self.lambda_param * self._w
 
-            self.w = self.w - eta * gradient
+            self._w = self._w - eta * gradient
     
     def predict(self, X):
-        if self.w is None:
+        if self._w is None:
             raise ValueError("The model must be trained before any prediction")
         
-        return np.sign(np.dot(X, self.w))
+        return np.sign(np.dot(X, self._w))
     
 class LogisticRegression:
     def __init__(self, n_iters=1000, lambda_param=0.01, learning_rate=0.01):

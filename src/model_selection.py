@@ -2,6 +2,9 @@ import numpy as np
 from itertools import product
 
 def cross_val_score(model, X, y, cv=5, shuffle=True, random_state=42, metric='accuracy'):
+    if X.shape[0] != y.shape[0]:
+        raise ValueError("X and y must have the same number of samples")
+
     n_samples = len(X)
     indices = np.arange(n_samples)
     
@@ -40,10 +43,11 @@ def cross_val_score(model, X, y, cv=5, shuffle=True, random_state=42, metric='ac
             tp = np.sum((predictions == 1) & (y_test == 1))
             fp = np.sum((predictions == 1) & (y_test == 0))
             fn = np.sum((predictions == 0) & (y_test == 1))
-            
             precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
             recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
             score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+        else:
+            raise ValueError("metric must be one of: accuracy, precision, recall, f1")
         
         scores.append(score)
         start_idx = end_idx

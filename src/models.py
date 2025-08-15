@@ -45,7 +45,7 @@ class LogisticRegression:
         self.n_iters = n_iters
         self.lambda_param = lambda_param
         self.learning_rate = learning_rate
-        self.w = None
+        self._w = None
 
     def fit(self, X, y):
         if X.shape[0] != y.shape[0]:
@@ -58,26 +58,26 @@ class LogisticRegression:
         X = np.hstack([bias_column, X])
         n_samples, n_features = X.shape
 
-        self.w = np.zeros(n_features)
+        self._w = np.zeros(n_features)
 
         for _ in range(self.n_iters):
             for t in range(n_samples):
                 x_t = X[t]
                 y_t = y[t]
 
-                gradient = -self.logistic(-y_t * np.dot(self.w, x_t)) * y_t * x_t + self.lambda_param * self.w
-                self.w -= self.learning_rate * gradient
+                gradient = -self._logistic(-y_t * np.dot(self._w, x_t)) * y_t * x_t + self.lambda_param * self._w
+                self._w -= self.learning_rate * gradient
 
-    def logistic(self, z):
+    def _logistic(self, z):
         return 1 / (1 + np.e**-z)
 
     def predict(self, X):
-        if self.w is None:
+        if self._w is None:
             raise ValueError("The model must be trained before any prediction")
 
         bias_column = np.ones((X.shape[0], 1))
         X = np.hstack([bias_column, X])
     
-        y = self.logistic(np.dot(X, self.w))
+        y = self._logistic(np.dot(X, self._w))
         return np.where(y >= 0.5, 1, -1)
     

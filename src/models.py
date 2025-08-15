@@ -8,6 +8,12 @@ class SVM:
         self.w = None
     
     def fit(self, X, y):
+        if X.shape[0] != y.shape[0]:
+            raise ValueError("X and y must have the same number of samples")
+        
+        if not np.array_equal(np.sort(np.unique(y)), np.array([-1, 1])):
+            raise ValueError("y must contain only -1 and 1 values")
+
         n_samples, n_features = X.shape
         self.w = np.zeros(n_features)
         
@@ -29,6 +35,9 @@ class SVM:
             self.w = self.w - eta * gradient
     
     def predict(self, X):
+        if self.w is None:
+            raise ValueError("The model must be trained before any prediction")
+        
         return np.sign(np.dot(X, self.w))
     
 class LogisticRegression:

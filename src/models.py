@@ -7,6 +7,9 @@ class SVM:
         self.random_seed = random_seed
         self._w = None
     
+    def _kernel_function(self, x1, x2):
+        return np.dot(x1, x2)
+    
     def fit(self, X, y):
         if X.shape[0] != y.shape[0]:
             raise ValueError("X and y must have the same number of samples")
@@ -25,7 +28,7 @@ class SVM:
             y_t = y[idx]
             
             eta = 1 / (self.lambda_param * t)
-            margin = y_t * np.dot(self._w, x_t)
+            margin = y_t * self._kernel_function(self._w, x_t)
 
             if margin < 1:
                 gradient = self.lambda_param * self._w - y_t * x_t
@@ -38,7 +41,10 @@ class SVM:
         if self._w is None:
             raise ValueError("The model must be trained before any prediction")
         
-        return np.sign(np.dot(X, self._w))
+        predictions = np.zeros(X.shape[0])
+        for i in range(X.shape[0]):
+            predictions[i] = np.sign(self._kernel_function(self._w, X[i]))
+        return predictions
     
 class LogisticRegression:
     def __init__(self, n_iters=1000, lambda_param=0.01, learning_rate=0.01):

@@ -33,16 +33,16 @@ def cross_val_score(model, X, y, cv=5, shuffle=True, random_state=42, metric='ac
             score = np.mean(predictions == y_test)
         elif metric == 'precision':
             tp = np.sum((predictions == 1) & (y_test == 1))
-            fp = np.sum((predictions == 1) & (y_test == 0))
+            fp = np.sum((predictions == 1) & (y_test == -1))
             score = tp / (tp + fp) if (tp + fp) > 0 else 0.0
         elif metric == 'recall':
             tp = np.sum((predictions == 1) & (y_test == 1))
-            fn = np.sum((predictions == 0) & (y_test == 1))
+            fn = np.sum((predictions == -1) & (y_test == 1))
             score = tp / (tp + fn) if (tp + fn) > 0 else 0.0
         elif metric == 'f1':
             tp = np.sum((predictions == 1) & (y_test == 1))
-            fp = np.sum((predictions == 1) & (y_test == 0))
-            fn = np.sum((predictions == 0) & (y_test == 1))
+            fp = np.sum((predictions == 1) & (y_test == -1))
+            fn = np.sum((predictions == -1) & (y_test == 1))
             precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
             recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
             score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0

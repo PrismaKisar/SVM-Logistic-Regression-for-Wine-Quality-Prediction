@@ -22,6 +22,42 @@ def plot_correlation_matrix(df, correlation_threshold):
     plt.show()
 
 
+def split_train_test(X, y, test_size=0.2, random_state=None, stratify=None):
+
+    if random_state is not None:
+        np.random.seed(random_state)
+    
+    n_samples = len(X)
+    n_test = int(n_samples * test_size)
+
+    if stratify is not None:
+        indices_train = []
+        indices_test = []
+        
+        for class_val in np.unique(stratify):
+            class_indices = np.where(stratify == class_val)[0]
+            n_class_test = int(len(class_indices) * test_size)
+            
+            np.random.shuffle(class_indices)
+            
+            indices_test.extend(class_indices[:n_class_test])
+            indices_train.extend(class_indices[n_class_test:])
+        
+        train_idx = np.array(indices_train)
+        test_idx = np.array(indices_test)
+
+        np.random.shuffle(train_idx)
+        np.random.shuffle(test_idx)
+
+    else:
+        indices = np.arange(n_samples)
+        np.random.shuffle(indices)
+        
+        test_idx = indices[:n_test]
+        train_idx = indices[n_test:]
+
+    return X.iloc[train_idx].copy(), X.iloc[test_idx].copy(), y.iloc[train_idx].copy(), y.iloc[test_idx].copy()
+
 
 class StandardScaler:
     def __init__(self):

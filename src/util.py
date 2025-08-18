@@ -59,6 +59,13 @@ def split_train_test(X, y, test_size=0.2, random_state=None, stratify=None):
     return X.iloc[train_idx].copy(), X.iloc[test_idx].copy(), y.iloc[train_idx].copy(), y.iloc[test_idx].copy()
 
 
+def _confusion_matrix(predictions, y_true):
+    tp = np.sum((predictions == 1) & (y_true == 1))
+    fp = np.sum((predictions == 1) & (y_true == -1))
+    tn = np.sum((predictions == -1) & (y_true == -1))
+    fn = np.sum((predictions == -1) & (y_true == 1))
+    return tp, fp, tn, fn
+
 class StandardScaler:
     def __init__(self):
         self.mean_ = None

@@ -76,25 +76,18 @@ class SVM:
         if self.kernel == 'linear':
             if self._w is None:
                 raise ValueError("The model must be trained before any prediction")
+            return np.sign(np.dot(X, self._w))
+            
+        elif self.kernel == 'poly':
+            if not self._support_vectors:
+                raise ValueError("The model must be trained before any prediction")
             
             predictions = np.zeros(X.shape[0])
             for i in range(X.shape[0]):
-                predictions[i] = np.sign(self._kernel_function(self._w, X[i]))
-            return predictions
-            
-        elif self.kernel == 'poly':
-            if self._S is None:
-                raise ValueError("The model must be trained before any prediction")
-            
-            n_test = X.shape[0]
-            predictions = np.zeros(n_test)
-            
-            for i in range(n_test):
-                decision_value = 0
-                for j in range(len(self._S)):
-                    decision_value += self._y_errors[j] * self._kernel_function(self._X_errors[j], X[i])
-                
-                predictions[i] = np.sign(decision_value) if decision_value != 0 else 1
+                decision = 0
+                for alpha, y_sv, x_sv in zip(self._alpha, self._support_labels, self._support_vectors):
+                    decision += alpha * self._kernel_function(x_sv, X[i])
+                predictions[i] = np.sign(decision) if decision != 0 else 1
             
             return predictions
 

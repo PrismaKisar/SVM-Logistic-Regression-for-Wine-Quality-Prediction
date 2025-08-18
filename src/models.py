@@ -49,28 +49,29 @@ class SVM:
                 self._w = self._w - eta * gradient
                 
         elif self.kernel == 'poly':
-            self._S = []
-            self._X_errors = []
-            self._y_errors = []
+            self._alpha = []
+            self._support_vectors = []
+            self._support_labels = []
             
-            for t in range(self.n_iters):
+            for t in range(1, self.n_iters + 1):
                 idx = np.random.randint(0, n_samples)
                 x_t = X[idx]
                 y_t = y[idx]
                 
-                y_hat = 0
-                for i, s in enumerate(self._S):
-                    y_hat += self._y_errors[i] * self._kernel_function(self._X_errors[i], x_t)
+                decision = 0
+                for alpha, y_sv, x_sv in zip(self._alpha, self._support_labels, self._support_vectors):
+                    decision += alpha * self._kernel_function(x_sv, x_t)
                 
-                y_hat = np.sign(y_hat) if y_hat != 0 else 1
+                h_t = max(0, 1 - y_t * decision)
                 
-                if y_hat != y_t:
-                    self._S.append(t)
-                    self._X_errors.append(x_t.copy())
-                    self._y_errors.append(y_t)
-        else:
-            raise ValueError("The kernel must be one of 'linear' or 'poly'")
-    
+                if h_t > 0:
+                    self._alpha = [(1 - 1/t) * alpha for alpha in self._alpha]
+                    self._alpha.append(y_t / (self.lambda_param * t))
+                    self._support_vectors.append(x_t.copy())
+                    self._support_labels.append(y_t)
+                else:
+                    self._alpha = [(1 - 1/t) * alpha for alpha in self._alpha]
+
     def predict(self, X):
         if self.kernel == 'linear':
             if self._w is None:

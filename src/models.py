@@ -105,6 +105,9 @@ class LogisticRegression:
         self.learning_rate = learning_rate
         self._w = None
 
+    def _expand_features(self, X):
+        pass
+
     def fit(self, X, y):
         if X.shape[0] != y.shape[0]:
             raise ValueError("X and y must have the same number of samples")
@@ -112,18 +115,22 @@ class LogisticRegression:
         if not np.array_equal(np.sort(np.unique(y)), np.array([-1, 1])):
             raise ValueError("y must contain only -1 and 1 values")
 
-        bias_column = np.ones((X.shape[0], 1))
-        X = np.hstack([bias_column, X])
-        n_samples, n_features = X.shape
-
+        X_expanded = self._expand_features(X)
+        
+        if self.kernel == 'linear':
+            bias_column = np.ones((X_expanded.shape[0], 1))
+            X_expanded = np.hstack([bias_column, X_expanded])
+        
+        n_samples, n_features = X_expanded.shape
         self._w = np.zeros(n_features)
 
         for _ in range(self.n_iters):
             for t in range(n_samples):
-                x_t = X[t]
+                x_t = X_expanded[t]
                 y_t = y[t]
 
-                gradient = -self._logistic(-y_t * np.dot(self._w, x_t)) * y_t * x_t + self.lambda_param * self._w
+                z = np.dot(self._w, x_t)
+                gradient = -self._logistic(-y_t * z) * y_t * x_t + self.lambda_param * self._w
                 self._w -= self.learning_rate * gradient
 
     def _logistic(self, z):

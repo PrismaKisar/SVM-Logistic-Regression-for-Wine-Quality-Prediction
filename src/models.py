@@ -111,50 +111,25 @@ class LogisticRegression:
         if self.kernel == 'linear':
             return X
         elif self.kernel == 'poly':
-            n_samples = X.shape[0]
-            n_features = X.shape[1]
+            from itertools import combinations_with_replacement
             
-            if self.degree == 2:
-                expanded_features = []
-                for i in range(n_samples):
-                    x = X[i]
-                    expanded_x = [1]
-                    
-                    for j in range(n_features):
-                        expanded_x.append(x[j])
-                    
-                    for j in range(n_features):
-                        for k in range(j, n_features):
-                            expanded_x.append(x[j] * x[k])
-                    
-                    expanded_features.append(expanded_x)
+            n_samples, n_features = X.shape
+            expanded_features = []
+            
+            for i in range(n_samples):
+                x = X[i]
+                expanded_x = [1]
                 
-                return np.array(expanded_features)
-            
-            elif self.degree == 3:
-                expanded_features = []
-                for i in range(n_samples):
-                    x = X[i]
-                    expanded_x = [1]
-                    
-                    for j in range(n_features):
-                        expanded_x.append(x[j])
-                    
-                    for j in range(n_features):
-                        for k in range(j, n_features):
-                            expanded_x.append(x[j] * x[k])
-                    
-                    for j in range(n_features):
-                        for k in range(j, n_features):
-                            for l in range(k, n_features):
-                                expanded_x.append(x[j] * x[k] * x[l])
-                    
-                    expanded_features.append(expanded_x)
+                for degree in range(1, self.degree + 1):
+                    for indices in combinations_with_replacement(range(n_features), degree):
+                        term = 1
+                        for idx in indices:
+                            term *= x[idx]
+                        expanded_x.append(term)
                 
-                return np.array(expanded_features)
+                expanded_features.append(expanded_x)
             
-            else:
-                raise ValueError("Only degree 2 and 3 are supported for polynomial expansion")
+            return np.array(expanded_features)
         else:
             raise ValueError("The kernel must be one of 'linear' or 'poly'")
 

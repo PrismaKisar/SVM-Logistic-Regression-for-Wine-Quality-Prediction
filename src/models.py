@@ -99,10 +99,12 @@ class SVM:
 
 
 class LogisticRegression:
-    def __init__(self, n_iters=1000, lambda_param=0.01, learning_rate=0.01):
+    def __init__(self, n_iters=1000, lambda_param=0.01, learning_rate=0.01, kernel='linear', degree=2):
         self.n_iters = n_iters
         self.lambda_param = lambda_param
         self.learning_rate = learning_rate
+        self.kernel = kernel
+        self.degree = degree
         self._w = None
 
     def _expand_features(self, X):
@@ -188,9 +190,16 @@ class LogisticRegression:
         if self._w is None:
             raise ValueError("The model must be trained before any prediction")
 
-        bias_column = np.ones((X.shape[0], 1))
-        X = np.hstack([bias_column, X])
+        X_expanded = self._expand_features(X)
+        
+        if self.kernel == 'linear':
+            bias_column = np.ones((X_expanded.shape[0], 1))
+            X_expanded = np.hstack([bias_column, X_expanded])
     
-        y = self._logistic(np.dot(X, self._w))
-        return np.where(y >= 0.5, 1, -1)
+        predictions = np.zeros(X_expanded.shape[0])
+        for i in range(X_expanded.shape[0]):
+            z = np.dot(self._w, X_expanded[i])
+            predictions[i] = self._logistic(z)
+        
+        return np.where(predictions >= 0.5, 1, -1)
     

@@ -184,7 +184,8 @@ class LogisticRegression:
                 self._w -= self.learning_rate * gradient
 
     def _logistic(self, z):
-        return 1 / (1 + np.e**-z)
+        z = np.clip(z, -500, 500)
+        return 1 / (1 + np.exp(-z))
 
     def predict(self, X):
         if self._w is None:

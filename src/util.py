@@ -59,6 +59,75 @@ def split_train_test(X, y, test_size=0.2, random_state=None, stratify=None):
     return X.iloc[train_idx].copy(), X.iloc[test_idx].copy(), y.iloc[train_idx].copy(), y.iloc[test_idx].copy()
 
 
+def _confusion_matrix(predictions, y_true):
+    tp = np.sum((predictions == 1) & (y_true == 1))
+    fp = np.sum((predictions == 1) & (y_true == -1))
+    tn = np.sum((predictions == -1) & (y_true == -1))
+    fn = np.sum((predictions == -1) & (y_true == 1))
+    return tp, fp, tn, fn
+
+
+def calculate_accuracy(predictions, y_true):
+    return np.mean(predictions == y_true)
+
+
+def calculate_precision(predictions, y_true):
+    tp, fp, _, _ = _confusion_matrix(predictions, y_true)
+    return tp / (tp + fp) if (tp + fp) > 0 else 0.0
+
+
+def calculate_recall(predictions, y_true):
+    tp, _, _, fn = _confusion_matrix(predictions, y_true)
+    return tp / (tp + fn) if (tp + fn) > 0 else 0.0
+
+
+def calculate_f1(predictions, y_true):
+    precision = calculate_precision(predictions, y_true)
+    recall = calculate_recall(predictions, y_true)
+    return 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+
+
+def calculate_metric(predictions, y_true, metric):
+    if metric == 'accuracy':
+        return calculate_accuracy(predictions, y_true)
+    elif metric == 'precision':
+        return calculate_precision(predictions, y_true)
+    elif metric == 'recall':
+        return calculate_recall(predictions, y_true)
+    elif metric == 'f1':
+        return calculate_f1(predictions, y_true)
+    else:
+        raise ValueError("metric must be one of: accuracy, precision, recall, f1")
+
+
+def calculate_metrics(predictions, y_true, metrics=['accuracy', 'precision', 'recall', 'f1']):
+    if isinstance(metrics, str):
+        metrics = [metrics]
+    
+    result = {}
+    tp, fp, tn, fn = None, None, None, None
+    
+    for metric in metrics:
+        if metric in ['precision', 'recall', 'f1'] and tp is None:
+            tp, fp, tn, fn = _confusion_matrix(predictions, y_true)
+        
+        if metric == 'accuracy':
+            result['accuracy'] = (tp + tn) / len(y_true) if tp is not None else np.mean(predictions == y_true)
+        elif metric == 'precision':
+            result['precision'] = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        elif metric == 'recall':
+            result['recall'] = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        elif metric == 'f1':
+            precision = result.get('precision', tp / (tp + fp) if (tp + fp) > 0 else 0.0)
+            recall = result.get('recall', tp / (tp + fn) if (tp + fn) > 0 else 0.0)
+            result['f1'] = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+    
+    if tp is not None:
+        result.update({'tp': tp, 'fp': fp, 'tn': tn, 'fn': fn})
+    
+    return result
+
+
 class StandardScaler:
     def __init__(self):
         self.mean_ = None

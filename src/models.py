@@ -8,10 +8,10 @@ class SVM:
         self.kernel = kernel
         self.degree = degree
         self._w = None
-        self._S = None
-        self._X_errors = None
-        self._y_errors = None
-    
+        self._alpha = []
+        self._support_vectors = []
+        self._support_labels = []
+
     def _kernel_function(self, x1, x2):
         if self.kernel == 'linear':
             return np.dot(x1, x2)
@@ -19,7 +19,7 @@ class SVM:
             return (1 + np.dot(x1, x2))**self.degree
         else:
             raise ValueError("The kernel must be one of 'linear' or 'poly'")
-    
+
     def fit(self, X, y):
         if X.shape[0] != y.shape[0]:
             raise ValueError("X and y must have the same number of samples")

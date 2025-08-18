@@ -106,7 +106,55 @@ class LogisticRegression:
         self._w = None
 
     def _expand_features(self, X):
-        pass
+        if self.kernel == 'linear':
+            return X
+        elif self.kernel == 'poly':
+            n_samples = X.shape[0]
+            n_features = X.shape[1]
+            
+            if self.degree == 2:
+                expanded_features = []
+                for i in range(n_samples):
+                    x = X[i]
+                    expanded_x = [1]
+                    
+                    for j in range(n_features):
+                        expanded_x.append(x[j])
+                    
+                    for j in range(n_features):
+                        for k in range(j, n_features):
+                            expanded_x.append(x[j] * x[k])
+                    
+                    expanded_features.append(expanded_x)
+                
+                return np.array(expanded_features)
+            
+            elif self.degree == 3:
+                expanded_features = []
+                for i in range(n_samples):
+                    x = X[i]
+                    expanded_x = [1]
+                    
+                    for j in range(n_features):
+                        expanded_x.append(x[j])
+                    
+                    for j in range(n_features):
+                        for k in range(j, n_features):
+                            expanded_x.append(x[j] * x[k])
+                    
+                    for j in range(n_features):
+                        for k in range(j, n_features):
+                            for l in range(k, n_features):
+                                expanded_x.append(x[j] * x[k] * x[l])
+                    
+                    expanded_features.append(expanded_x)
+                
+                return np.array(expanded_features)
+            
+            else:
+                raise ValueError("Only degree 2 and 3 are supported for polynomial expansion")
+        else:
+            raise ValueError("The kernel must be one of 'linear' or 'poly'")
 
     def fit(self, X, y):
         if X.shape[0] != y.shape[0]:

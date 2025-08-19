@@ -22,10 +22,9 @@ def plot_correlation_matrix(df, correlation_threshold):
     plt.show()
 
 
-def split_train_test(X, y, test_size=0.2, random_state=None, stratify=None):
+def split_train_test(X, y, test_size=0.2, random_state=42, stratify=None):
 
-    if random_state is not None:
-        np.random.seed(random_state)
+    np.random.seed(random_state)
     
     n_samples = len(X)
     n_test = int(n_samples * test_size)

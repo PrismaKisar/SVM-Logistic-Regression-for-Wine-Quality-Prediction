@@ -22,10 +22,9 @@ def plot_correlation_matrix(df, correlation_threshold):
     plt.show()
 
 
-def split_train_test(X, y, test_size=0.2, random_state=None, stratify=None):
+def split_train_test(X, y, test_size=0.2, random_state=42, stratify=None):
 
-    if random_state is not None:
-        np.random.seed(random_state)
+    np.random.seed(random_state)
     
     n_samples = len(X)
     n_test = int(n_samples * test_size)
@@ -130,14 +129,14 @@ def calculate_metrics(predictions, y_true, metrics=['accuracy', 'precision', 're
 
 class StandardScaler:
     def __init__(self):
-        self.mean_ = None
-        self.scale_ = None
+        self._mean = None
+        self._scale = None
     
     def fit(self, X):
         X = X.values
         
-        self.mean_ = np.mean(X, axis=0)
-        self.scale_ = np.std(X, axis=0, ddof=1)
+        self._mean = np.mean(X, axis=0)
+        self._scale = np.std(X, axis=0, ddof=1)
         
         return self
     
@@ -146,7 +145,7 @@ class StandardScaler:
         columns = X.columns
         index = X.index
        
-        X_scaled = (X_values - self.mean_) / self.scale_
+        X_scaled = (X_values - self._mean) / self._scale
         
         if columns is not None:
             return pd.DataFrame(X_scaled, columns=columns, index=index)

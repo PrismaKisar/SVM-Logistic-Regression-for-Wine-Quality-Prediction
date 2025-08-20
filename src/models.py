@@ -1,10 +1,10 @@
 import numpy as np
 
 class SVM:
-    def __init__(self, n_iters=1000, lambda_param=0.01, random_seed=42, kernel='linear', degree=2):
+    def __init__(self, n_iters=1000, lambda_param=0.01, random_state=42, kernel='linear', degree=2):
         self.n_iters = n_iters
         self.lambda_param = lambda_param
-        self.random_seed = random_seed
+        self.random_state = random_state
         self.kernel = kernel
         self.degree = degree
         self._w = None
@@ -28,7 +28,7 @@ class SVM:
             raise ValueError("y must contain only -1 and 1 values")
 
         n_samples, n_features = X.shape
-        np.random.seed(self.random_seed)
+        np.random.seed(self.random_state)
         
         if self.kernel == 'linear':
             self._w = np.zeros(n_features)

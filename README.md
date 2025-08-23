@@ -11,6 +11,37 @@ This project implements **Support Vector Machine (SVM)** and **Logistic Regressi
 - **Features**: 11 physicochemical properties (fixed acidity, volatile acidity, citric acid, etc.)
 - **Total samples**: ~6,500 wines (red + white combined)
 
+## Requirements & Usage
+
+### Dependencies
+- Python 3.8+
+- NumPy
+- Pandas  
+- Matplotlib
+- Seaborn
+- Jupyter Notebook
+
+### Installation & Execution
+1. Clone the repository
+2. Install dependencies: `pip install -r requirements.txt`
+3. Run notebooks in sequential order:
+   - `notebooks/data_exploration.ipynb` - Dataset analysis and visualization
+   - `notebooks/data_preprocessing.ipynb` - Feature engineering and data preparation
+   - `notebooks/models_evaluation.ipynb` - Model training and performance evaluation
+
+### Implementation Structure
+All core implementations are located in the `src/` directory:
+- `models.py` - SVM and Logistic Regression algorithm implementations
+- `model_selection.py` - Grid search and cross-validation utilities  
+- `util.py` - Performance metrics and helper functions
+
+## Key Results
+
+### Performance Summary
+- **Logistic Regression** consistently outperforms SVM across all configurations
+- **Polynomial kernels** improve both models, with LR showing more controlled gains
+- **Best accuracy**: 77.5% (Polynomial LR) vs 74.5% (Polynomial SVM)
+
 ## Academic Integrity
 
 This project was completed in accordance with academic integrity policies. All implementations are original work, with appropriate citations for theoretical foundations and mathematical formulations.

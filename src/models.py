@@ -69,13 +69,13 @@ class SVM:
                 
                 decision = 0
                 for alpha, y_sv, x_sv in zip(self._alpha, self._support_labels, self._support_vectors):
-                    decision += alpha * self._kernel_function(x_sv, x_t)
+                    decision += alpha * y_sv * self._kernel_function(x_sv, x_t)
                 
                 h_t = max(0, 1 - y_t * decision)
                 
                 if h_t > 0:
                     self._alpha = [(1 - 1/t) * alpha for alpha in self._alpha]
-                    self._alpha.append(y_t / (self.lambda_param * t))
+                    self._alpha.append(1 / (self.lambda_param * t))
                     self._support_vectors.append(x_t.copy())
                     self._support_labels.append(y_t)
                 else:
@@ -114,8 +114,9 @@ class SVM:
                     if alpha_list:
                         alphas = np.array(alpha_list)
                         svs = np.array(sv_list)
+                        y_sv = np.array(state['support_labels'])
                         kernels = np.array([self._kernel_function(sv, x_i) for sv in svs])
-                        decision = np.sum(alphas * kernels)
+                        decision = np.sum(alphas * y_sv * kernels)
                         averaged_decision += decision
                 
                 averaged_decision /= n_states

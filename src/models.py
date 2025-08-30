@@ -1,12 +1,13 @@
 import numpy as np
 
 class SVM:
-    def __init__(self, n_iters=1000, lambda_param=0.01, random_state=42, kernel='linear', degree=2):
+    def __init__(self, n_iters=1000, lambda_param=0.01, random_state=42, kernel='linear', degree=2, averaging_step=1):
         self.n_iters = n_iters
         self.lambda_param = lambda_param
         self.random_state = random_state
         self.kernel = kernel
         self.degree = degree
+        self.averaging_step = averaging_step
         self._w = None
         self._w_history = []
         self._alpha = []
@@ -79,12 +80,13 @@ class SVM:
                 else:
                     self._alpha = [(1 - 1/t) * alpha for alpha in self._alpha]
                 
-                current_state = {
-                    'alpha': self._alpha.copy(),
-                    'support_vectors': [sv.copy() for sv in self._support_vectors],
-                    'support_labels': self._support_labels.copy()
-                }
-                self._decision_history.append(current_state)
+                if t % self.averaging_step == 0:
+                    current_state = {
+                        'alpha': self._alpha.copy(),
+                        'support_vectors': [sv.copy() for sv in self._support_vectors],
+                        'support_labels': self._support_labels.copy()
+                    }
+                    self._decision_history.append(current_state)
 
     def predict(self, X):
         if self.kernel == 'linear':

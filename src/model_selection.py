@@ -73,15 +73,13 @@ def grid_search_cv(model_class, param_grid, X, y, cv=5, scoring='f1', random_sta
         params = dict(zip(param_names, combination))
         model = model_class(**params)
         
-        scores = cross_val_score(model, X, y, cv=cv, random_state=random_state, metrics=scoring)
-        mean_score = np.mean(scores)
+        all_scores = cross_val_score(model, X, y, cv=cv, random_state=random_state, metrics=['accuracy', 'precision', 'recall', 'f1'])
+        
+        mean_score = np.mean(all_scores[scoring])
         
         if mean_score > best_score:
             best_score = mean_score
             best_params = params
-            
-            all_scores = cross_val_score(model, X, y, cv=cv, random_state=random_state, metrics=['accuracy', 'precision', 'recall', 'f1'])
-
             best_metrics = {
                 'accuracy': np.mean(all_scores['accuracy']),
                 'precision': np.mean(all_scores['precision']),

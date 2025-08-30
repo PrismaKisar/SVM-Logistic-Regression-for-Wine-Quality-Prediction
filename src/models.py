@@ -8,9 +8,11 @@ class SVM:
         self.kernel = kernel
         self.degree = degree
         self._w = None
+        self._w_history = []
         self._alpha = []
         self._support_vectors = []
         self._support_labels = []
+        self._decision_history = []
 
     def _kernel_function(self, x1, x2):
         if self.kernel == 'linear':
@@ -32,6 +34,7 @@ class SVM:
         
         if self.kernel == 'linear':
             self._w = np.zeros(n_features)
+            self._w_history = []
             
             for t in range(1, self.n_iters + 1):
                 idx = np.random.randint(0, n_samples)
@@ -47,11 +50,15 @@ class SVM:
                     gradient = self.lambda_param * self._w
 
                 self._w = self._w - eta * gradient
+                self._w_history.append(self._w.copy())
+            
+            self._w = np.mean(self._w_history, axis=0)
                 
         elif self.kernel == 'poly':
             self._alpha = []
             self._support_vectors = []
             self._support_labels = []
+            self._decision_history = []
             
             for t in range(1, self.n_iters + 1):
                 idx = np.random.randint(0, n_samples)
@@ -71,6 +78,13 @@ class SVM:
                     self._support_labels.append(y_t)
                 else:
                     self._alpha = [(1 - 1/t) * alpha for alpha in self._alpha]
+                
+                current_state = {
+                    'alpha': self._alpha.copy(),
+                    'support_vectors': [sv.copy() for sv in self._support_vectors],
+                    'support_labels': self._support_labels.copy()
+                }
+                self._decision_history.append(current_state)
 
     def predict(self, X):
         if self.kernel == 'linear':
@@ -79,15 +93,29 @@ class SVM:
             return np.sign(np.dot(X, self._w))
             
         elif self.kernel == 'poly':
-            if not self._support_vectors:
+            if not self._decision_history:
                 raise ValueError("The model must be trained before any prediction")
             
             predictions = np.zeros(X.shape[0])
+            n_states = len(self._decision_history)
+            
             for i in range(X.shape[0]):
-                decision = 0
-                for alpha, y_sv, x_sv in zip(self._alpha, self._support_labels, self._support_vectors):
-                    decision += alpha * self._kernel_function(x_sv, X[i])
-                predictions[i] = np.sign(decision) if decision != 0 else 1
+                averaged_decision = 0
+                x_i = X[i]
+                
+                for state in self._decision_history:
+                    alpha_list = state['alpha']
+                    sv_list = state['support_vectors']
+                    
+                    if alpha_list:
+                        alphas = np.array(alpha_list)
+                        svs = np.array(sv_list)
+                        kernels = np.array([self._kernel_function(sv, x_i) for sv in svs])
+                        decision = np.sum(alphas * kernels)
+                        averaged_decision += decision
+                
+                averaged_decision /= n_states
+                predictions[i] = np.sign(averaged_decision) if averaged_decision != 0 else 1
             
             return predictions
 

@@ -1,6 +1,12 @@
 import numpy as np
 from itertools import product
+from joblib import Parallel, delayed
 from util import calculate_metric, calculate_metrics
+
+def _evaluate_params(model_class, params, X, y, cv, random_state):
+    model = model_class(**params)
+    all_scores = cross_val_score(model, X, y, cv=cv, random_state=random_state, metrics=['accuracy', 'precision', 'recall', 'f1'])
+    return params, all_scores
 
 def cross_val_score(model, X, y, cv=5, shuffle=True, random_state=42, metrics='accuracy'):
     if X.shape[0] != y.shape[0]:
@@ -61,20 +67,22 @@ def cross_val_score(model, X, y, cv=5, shuffle=True, random_state=42, metrics='a
         return scores
 
 
-def grid_search_cv(model_class, param_grid, X, y, cv=5, scoring='f1', random_state=42):
+def grid_search_cv(model_class, param_grid, X, y, cv=5, scoring='f1', random_state=42, n_jobs=-1):
     param_names = list(param_grid.keys())
     param_values = list(param_grid.values())
+    
+    param_combinations = [dict(zip(param_names, combination)) for combination in product(*param_values)]
+    
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(_evaluate_params)(model_class, params, X, y, cv, random_state)
+        for params in param_combinations
+    )
     
     best_score = 0
     best_params = None
     best_metrics = None
     
-    for combination in product(*param_values):
-        params = dict(zip(param_names, combination))
-        model = model_class(**params)
-        
-        all_scores = cross_val_score(model, X, y, cv=cv, random_state=random_state, metrics=['accuracy', 'precision', 'recall', 'f1'])
-        
+    for params, all_scores in results:
         mean_score = np.mean(all_scores[scoring])
         
         if mean_score > best_score:

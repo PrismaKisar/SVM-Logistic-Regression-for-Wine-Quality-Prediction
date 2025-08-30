@@ -35,13 +35,6 @@ All core implementations are located in the `src/` directory:
 - `model_selection.py` - Grid search and cross-validation utilities  
 - `util.py` - Performance metrics and helper functions
 
-## Key Results
-
-### Performance Summary
-- **Logistic Regression** consistently outperforms SVM across all configurations
-- **Polynomial kernels** improve both models, with LR showing more controlled gains
-- **Best accuracy**: 77.5% (Polynomial LR) vs 74.5% (Polynomial SVM)
-
 ## Academic Integrity
 
 This project was completed in accordance with academic integrity policies. All implementations are original work, with appropriate citations for theoretical foundations and mathematical formulations.

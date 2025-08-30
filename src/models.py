@@ -34,7 +34,8 @@ class SVM:
         np.random.seed(self.random_state)
         
         if self.kernel == 'linear':
-            self._w = np.zeros(n_features)
+            X = np.hstack([np.ones((n_samples, 1)), X])
+            self._w = np.zeros(n_features + 1)
             self._w_history = []
             
             for t in range(1, self.n_iters + 1):
@@ -92,6 +93,7 @@ class SVM:
         if self.kernel == 'linear':
             if self._w is None:
                 raise ValueError("The model must be trained before any prediction")
+            X = np.hstack([np.ones((X.shape[0], 1)), X])
             return np.sign(np.dot(X, self._w))
             
         elif self.kernel == 'poly':

@@ -1,5 +1,16 @@
 import numpy as np
 
+
+def kernel_function(x1, x2, kernel='poly', degree=2, gamma=1.0):
+    if kernel == 'poly':
+        return (1 + np.dot(x1, x2))**degree
+    elif kernel == 'gaussian':
+        return np.exp(-1 / (2 * gamma) * np.linalg.norm(x1 - x2)**2)
+    else:
+        raise ValueError("The kernel must be one of 'poly' or 'gaussian'")
+
+
+
 class SVM:
     def __init__(self, n_iters=1000, lambda_param=0.01, random_state=42, kernel='linear', degree=2, n_averaged_states=1):
         self.n_iters = n_iters
@@ -16,14 +27,6 @@ class SVM:
         self._support_vectors = []
         self._support_labels = []
         self._decision_history = []
-
-    def _kernel_function(self, x1, x2):
-        if self.kernel == 'linear':
-            return np.dot(x1, x2)
-        elif self.kernel == 'poly':
-            return (1 + np.dot(x1, x2))**self.degree
-        else:
-            raise ValueError("The kernel must be one of 'linear' or 'poly'")
 
     def fit(self, X, y):
         if X.shape[0] != y.shape[0]:

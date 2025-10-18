@@ -37,6 +37,7 @@ class SVM:
         
         if self.kernel == 'linear':
             # Primal SVM using Pegasos algorithm
+            # Keep weights and bias separate to avoid regularizing the bias
             self._w = np.zeros(n_features)
             self._b = 0.0
             self._w_history = []
@@ -154,6 +155,7 @@ class LogisticRegression:
         self.degree = degree
         self.random_state = random_state
         self._w = None
+        self._b = None
 
     def _expand_features(self, X):
         if self.kernel == 'linear':
@@ -184,29 +186,50 @@ class LogisticRegression:
     def fit(self, X, y):
         if X.shape[0] != y.shape[0]:
             raise ValueError("X and y must have the same number of samples")
-        
+
         if not np.array_equal(np.sort(np.unique(y)), np.array([-1, 1])):
             raise ValueError("y must contain only -1 and 1 values")
 
-        X_expanded = self._expand_features(X)
-        
-        if self.kernel == 'linear':
-            bias_column = np.ones((X_expanded.shape[0], 1))
-            X_expanded = np.hstack([bias_column, X_expanded])
-        
-        n_samples, n_features = X_expanded.shape
-        self._w = np.zeros(n_features)
-        
+        n_samples, n_features = X.shape
         np.random.seed(self.random_state)
 
-        for _ in range(self.n_iters):
-            t = np.random.randint(0, n_samples)
-            x_t = X_expanded[t]
-            y_t = y[t]
+        if self.kernel == 'linear':
+            # SGD for Logistic Regression with logistic loss
+            # Keep weights and bias separate to avoid regularizing the bias
+            self._w = np.zeros(n_features)
+            self._b = 0.0
 
-            z = np.dot(self._w, x_t)
-            gradient = -self._logistic(-y_t * z) * y_t * x_t + self.lambda_param * self._w
-            self._w -= self.learning_rate * gradient
+            for _ in range(self.n_iters):
+                idx = np.random.randint(0, n_samples)
+                x_t = X[idx]
+                y_t = y[idx]
+
+                z_t = y_t * (np.dot(self._w, x_t) + self._b)
+                # Gradient of: log(1 + e^(-y*z)) + (lambda/2)||w||^2
+                sigma_term = self._logistic(-z_t)
+
+                # Update w with regularization, b without
+                self._w = (1 - self.learning_rate * self.lambda_param) * self._w + \
+                        self.learning_rate * sigma_term * y_t * x_t
+
+                self._b = self._b + self.learning_rate * sigma_term * y_t
+
+        elif self.kernel == 'poly':
+            # Polynomial kernel: use explicit feature expansion (includes bias in phi(x))
+            X_expanded = self._expand_features(X)
+
+            n_samples, n_features = X_expanded.shape
+            self._w = np.zeros(n_features)
+
+            for _ in range(self.n_iters):
+                idx = np.random.randint(0, n_samples)
+                x_t = X_expanded[idx]
+                y_t = y[idx]
+
+                z = np.dot(self._w, x_t)
+                sigma_term = self._logistic(-y_t * z)
+                gradient = -sigma_term * y_t * x_t + self.lambda_param * self._w
+                self._w -= self.learning_rate * gradient
 
     def _logistic(self, z):
         z = np.clip(z, -500, 500)
@@ -216,16 +239,18 @@ class LogisticRegression:
         if self._w is None:
             raise ValueError("The model must be trained before any prediction")
 
-        X_expanded = self._expand_features(X)
-        
         if self.kernel == 'linear':
-            bias_column = np.ones((X_expanded.shape[0], 1))
-            X_expanded = np.hstack([bias_column, X_expanded])
-    
-        predictions = np.zeros(X_expanded.shape[0])
-        for i in range(X_expanded.shape[0]):
-            z = np.dot(self._w, X_expanded[i])
-            predictions[i] = self._logistic(z)
-        
-        return np.where(predictions >= 0.5, 1, -1)
+            predictions = np.zeros(X.shape[0])
+            for i in range(X.shape[0]):
+                z = np.dot(self._w, X[i]) + self._b
+                predictions[i] = self._logistic(z)
+            return np.where(predictions >= 0.5, 1, -1)
+
+        elif self.kernel == 'poly':
+            X_expanded = self._expand_features(X)
+            predictions = np.zeros(X_expanded.shape[0])
+            for i in range(X_expanded.shape[0]):
+                z = np.dot(self._w, X_expanded[i])
+                predictions[i] = self._logistic(z)
+            return np.where(predictions >= 0.5, 1, -1)
     

@@ -23,6 +23,8 @@ class SVM:
         self.loss_interval = loss_interval
         self._w = None
         self._b = None
+        self._w_avg = None
+        self._b_avg = None
         self._alpha = []
         self._support_vectors = []
         self._support_labels = []
@@ -36,6 +38,9 @@ class SVM:
         if self.kernel == 'linear':
             self._w = np.zeros(n_features)
             self._b = 0.0
+
+            self._w_avg = np.zeros(n_features)
+            self._b_avg = 0.0
 
             for t in range(1, self.n_iters + 1):
                 idx = np.random.randint(0, n_samples)
@@ -51,10 +56,18 @@ class SVM:
                 else:
                     self._w = (1 - 1/t) * self._w
 
+
+                self._w_avg += self._w
+                self._b_avg += self._b
+
                 # Track loss at specified intervals
                 if self.track_loss and t % self.loss_interval == 0:
                     loss = self.compute_loss(X, y)
                     self.loss_history.append((t, loss))
+
+            # Compute final average
+            self._w_avg /= self.n_iters
+            self._b_avg /= self.n_iters
 
         elif self.kernel in ['poly', 'gaussian']:
             self._alpha = []
@@ -137,7 +150,11 @@ class SVM:
         if self.kernel == 'linear':
             if self._w is None:
                 raise ValueError("The model must be trained before any prediction")
-            return np.sign(np.dot(X, self._w) + self._b)
+
+            w = self._w_avg
+            b = self._b_avg
+
+            return np.sign(np.dot(X, w) + b)
 
         elif self.kernel in ['poly', 'gaussian']:
             if not self._support_vectors:
@@ -171,6 +188,8 @@ class LogisticRegression:
         self.loss_interval = loss_interval
         self._w = None
         self._b = None
+        self._w_avg = None
+        self._b_avg = None
         self._alpha = None
         self._X_train = None
         self._y_train = None
@@ -191,6 +210,9 @@ class LogisticRegression:
             self._w = np.zeros(n_features)
             self._b = 0.0
 
+            self._w_avg = np.zeros(n_features)
+            self._b_avg = 0.0
+
             for t in range(1, self.n_iters + 1):
                 idx = np.random.randint(0, n_samples)
                 x_t = X[idx]
@@ -206,10 +228,18 @@ class LogisticRegression:
 
                 self._b = self._b + self.learning_rate * sigma_term * y_t
 
+                # Update running average
+                self._w_avg += self._w
+                self._b_avg += self._b
+
                 # Track loss at specified intervals
                 if self.track_loss and t % self.loss_interval == 0:
                     loss = self.compute_loss(X, y)
                     self.loss_history.append((t, loss))
+
+            # Compute final average
+            self._w_avg /= self.n_iters
+            self._b_avg /= self.n_iters
 
         elif self.kernel in ['poly', 'gaussian']:
             self._alpha = []
@@ -277,9 +307,17 @@ class LogisticRegression:
             if self._w is None:
                 raise ValueError("The model must be trained before any prediction")
 
+            # Use averaged weights if averaging is enabled
+            if self.use_averaging and self._w_avg is not None:
+                w = self._w_avg
+                b = self._b_avg
+            else:
+                w = self._w
+                b = self._b
+
             predictions = np.zeros(X.shape[0])
             for i in range(X.shape[0]):
-                z = np.dot(self._w, X[i]) + self._b
+                z = np.dot(w, X[i]) + b
                 predictions[i] = self._logistic(z)
             return np.where(predictions >= 0.5, 1, -1)
 

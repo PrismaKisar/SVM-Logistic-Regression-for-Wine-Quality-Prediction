@@ -134,11 +134,15 @@ class LogisticRegression:
                 x_t = X[idx]
                 y_t = y[idx]
 
-                z_t = np.dot(self._w, x_t) + self._b
-                h_x = self._logistic(z_t)
+                z_t = y_t * (np.dot(self._w, x_t) + self._b)
 
-                self._w -= self.learning_rate * (-(y_t - h_x) * x_t + self.lambda_param * self._w)
-                self._b -= self.learning_rate * (-(y_t - h_x))
+                sigma_term = self._logistic(-z_t)
+
+                # Update w with regularization, b without
+                self._w = (1 - self.learning_rate * self.lambda_param) * self._w + \
+                        self.learning_rate * sigma_term * y_t * x_t
+
+                self._b = self._b + self.learning_rate * sigma_term * y_t
 
         elif self.kernel in ['poly', 'gaussian']:
             self._alpha = []

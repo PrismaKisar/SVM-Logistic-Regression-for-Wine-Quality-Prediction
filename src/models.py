@@ -281,6 +281,11 @@ class LogisticRegression:
                 # Update running average of alphas
                 self._alpha_avg = [avg + (a - avg)/t for a, avg in zip(self._alpha, self._alpha_avg)]
 
+                # Track loss at intervals
+                if self.track_loss and t % self.loss_interval == 0:
+                    loss = self._compute_loss_kernel(X, y)
+                    self.loss_history.append((t, loss))
+
             self._alpha = np.array(self._alpha_avg)
 
 
@@ -306,6 +311,36 @@ class LogisticRegression:
         ))
 
         return reg_term + empirical_loss
+
+
+    def _compute_loss_kernel(self, X, y):
+        if self.kernel == 'linear':
+            return self.compute_loss(X, y)
+
+        if len(self._support_vectors) == 0 or len(self._alpha) == 0:
+            # If no support vectors, all predictions are 0
+            # Logistic loss: log(1 + exp(-y*g)) where g=0 -> log(2)
+            return np.log(2)
+
+        n_samples = X.shape[0]
+        predictions_scores = np.zeros(n_samples)
+
+        for i in range(n_samples):
+            k_t = np.array([
+                kernel_function(sv, X[i], self.kernel, self.degree, self.gamma)
+                for sv in self._support_vectors
+            ])
+            predictions_scores[i] = np.dot(self._alpha, k_t)
+
+        # Logistic loss with numerical stability
+        z = y * predictions_scores
+        empirical_loss = np.mean(np.where(
+            z >= 0,
+            np.log1p(np.exp(-z)),
+            -z + np.log1p(np.exp(z))
+        ))
+
+        return empirical_loss
 
 
     def predict(self, X):

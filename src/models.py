@@ -3,12 +3,14 @@ import numpy as np
 
 def kernel_function(x1, x2, kernel='poly', degree=2, gamma=1.0):
     if kernel == 'poly':
-        return (1 + np.dot(x1, x2))**degree
+        return (1 + np.dot(x1, x2)) ** degree
+
     elif kernel == 'gaussian':
-        return np.exp(-1 / (2 * gamma) * np.linalg.norm(x1 - x2)**2)
+        diff = x1 - x2
+        return np.exp(-np.dot(diff, diff) / (2 * gamma))
+
     else:
         raise ValueError("The kernel must be one of 'poly' or 'gaussian'")
-
 
 
 class SVM:
@@ -81,105 +83,94 @@ class SVM:
                 y_t = y[idx]
 
                 # Compute g_t(x_t)
-                g_t = sum(
-                    alpha * kernel_function(sv, x_t, self.kernel, self.degree, self.gamma)
-                    for alpha, sv in zip(self._alpha, self._support_vectors)
-                )
+                if len(self._support_vectors) > 0:
+                    k_t = np.array([kernel_function(sv, x_t, self.kernel, self.degree, self.gamma)
+                                    for sv in self._support_vectors])
+                    g_t = np.dot(np.array(self._alpha), k_t)
+                else:
+                    g_t = 0.0
 
-                # Hinge loss: h_t(g_t) = max(0, 1 - y_t * g_t(x_t))
+                # Hinge loss
                 hinge_loss = max(0, 1 - y_t * g_t)
 
-                # Decay: g_t <- (1 - 1/t) * g_t
-                self._alpha = [a * (1 - 1/t) for a in self._alpha]
+                # Decay existing alphas
+                self._alpha = [(1 - 1/t) * a for a in self._alpha]
 
                 # Update only if hinge_loss > 0
                 if hinge_loss > 0:
-                    # Add new kernel: g_t <- g_t + (y_t / λt) * K(x_t, ·)
                     self._support_vectors.append(x_t.copy())
-                    self._alpha.append(y_t / (self.lambda_param * t))
-                    self._alpha_avg = np.append(self._alpha_avg, 0.0)
+                    new_alpha = y_t / (self.lambda_param * t)
+                    self._alpha.append(new_alpha)
+                    self._alpha_avg.append(0.0)
 
-                if len(self._alpha_avg) > 0:
-                    self._alpha_avg = np.array(self._alpha_avg)
-                    self._alpha = np.array(self._alpha)
-                    self._alpha_avg += (self._alpha - self._alpha_avg) / t
+                # Update running average of alphas
+                self._alpha_avg = [avg + (a - avg)/t for a, avg in zip(self._alpha, self._alpha_avg)]
 
-                # Track loss at specified intervals
+                # Track loss at intervals
                 if self.track_loss and t % self.loss_interval == 0:
                     loss = self._compute_loss_kernel(X, y)
                     self.loss_history.append((t, loss))
 
-            self._alpha = self._alpha_avg
+            self._alpha = np.array(self._alpha_avg)
 
 
     def compute_loss(self, X, y):
-        """
-        Compute the SVM loss (only for linear kernel).
-        Loss = λ/2 ||w||² + 1/n Σ max(0, 1 - y_i(w·x_i + b))
-        """
         if self.kernel != 'linear':
             raise NotImplementedError("Loss computation is only implemented for linear kernel")
-
         if self._w is None:
             raise ValueError("The model must be trained before computing the loss")
 
-        n_samples = X.shape[0]
-
-        # Regularization term: λ/2 ||w||²
-        reg_term = (self.lambda_param / 2) * np.dot(self._w, self._w)
-
-        # Hinge loss: 1/n Σ max(0, 1 - y_i(w·x_i + b))
-        margins = y * (np.dot(X, self._w) + self._b)
-        hinge_losses = np.maximum(0, 1 - margins)
-        empirical_loss = np.mean(hinge_losses)
+        reg_term = 0.5 * self.lambda_param * np.dot(self._w, self._w)
+        empirical_loss = np.mean(np.maximum(0, 1 - y * (np.dot(X, self._w) + self._b)))
 
         return reg_term + empirical_loss
 
+
     def _compute_loss_kernel(self, X, y):
-        """
-        Compute the SVM loss for kernel methods (approximate).
-        For non-linear kernels, computes empirical hinge loss only.
-        """
         if self.kernel == 'linear':
             return self.compute_loss(X, y)
 
-        # For kernel methods, compute empirical hinge loss
-        predictions_scores = np.zeros(X.shape[0])
-        for i in range(X.shape[0]):
-            g = sum(
-                alpha * kernel_function(sv, X[i], self.kernel, self.degree, self.gamma)
-                for alpha, sv in zip(self._alpha, self._support_vectors)
-            )
-            predictions_scores[i] = g
+        if len(self._support_vectors) == 0 or len(self._alpha) == 0:
+            return np.mean(np.maximum(0, 1 - y * 0.0))
+
+        n_samples = X.shape[0]
+        predictions_scores = np.zeros(n_samples)
+
+        for i in range(n_samples):
+            k_t = np.array([
+                kernel_function(sv, X[i], self.kernel, self.degree, self.gamma)
+                for sv in self._support_vectors
+            ])
+            predictions_scores[i] = np.dot(self._alpha, k_t)
 
         margins = y * predictions_scores
-        hinge_losses = np.maximum(0, 1 - margins)
-        return np.mean(hinge_losses)
+        return np.mean(np.maximum(0, 1 - margins))
+
 
     def predict(self, X):
         if self.kernel == 'linear':
             if self._w is None:
                 raise ValueError("The model must be trained before any prediction")
-
             w = self._w_avg
             b = self._b_avg
-
             return np.sign(np.dot(X, w) + b)
 
         elif self.kernel in ['poly', 'gaussian']:
-            if not self._support_vectors:
+            if len(self._support_vectors) == 0:
                 raise ValueError("The model must be trained before any prediction")
 
             predictions = np.zeros(X.shape[0])
 
-            for i in range(X.shape[0]):
-                g = sum(
-                    alpha * kernel_function(sv, X[i], self.kernel, self.degree, self.gamma)
-                    for alpha, sv in zip(self._alpha, self._support_vectors)
-                )
+            for i, x in enumerate(X):
+                k_t = np.array([
+                    kernel_function(sv, x, self.kernel, self.degree, self.gamma)
+                    for sv in self._support_vectors
+                ])
+                g = np.dot(self._alpha, k_t)
                 predictions[i] = np.sign(g) if g != 0 else 1
 
             return predictions
+
 
 
 class LogisticRegression:
@@ -252,8 +243,8 @@ class LogisticRegression:
             self._b_avg /= self.n_iters
 
         elif self.kernel in ['poly', 'gaussian']:
-            self._alpha = np.array([], dtype=float)
-            self._alpha_avg = np.array([], dtype=float)
+            self._alpha = []
+            self._alpha_avg = []
             self._support_vectors = []
 
             for t in range(1, self.n_iters + 1):
@@ -269,7 +260,8 @@ class LogisticRegression:
                 if len(self._support_vectors) > 0:
                     k_t = np.array([kernel_function(sv, x_t, self.kernel, self.degree, self.gamma)
                                     for sv in self._support_vectors])
-                    g_t = np.dot(self._alpha, k_t)
+                    alpha_arr = np.array(self._alpha)
+                    g_t = np.dot(alpha_arr, k_t)
                 else:
                     g_t = 0.0
 
@@ -277,22 +269,19 @@ class LogisticRegression:
                 weight = self._logistic(-y_t * g_t)
 
                 # Decay current alphas
-                self._alpha *= (1 - eta * self.lambda_param)
+                self._alpha = [(1 - eta * self.lambda_param) * a for a in self._alpha]
 
                 # Add new support vector only if weight > threshold
                 if weight > self._WEIGHT_THRESHOLD:
                     self._support_vectors.append(x_t.copy())
                     new_alpha = (y_t / (self.lambda_param * t)) * weight
-                    self._alpha = np.append(self._alpha, new_alpha)
-                    self._alpha_avg = np.append(self._alpha_avg, 0.0)  # allinea media
+                    self._alpha.append(new_alpha)
+                    self._alpha_avg.append(0.0)
 
                 # Update running average of alphas
-                if len(self._alpha_avg) > 0:
-                    self._alpha_avg += (self._alpha - self._alpha_avg) / t
+                self._alpha_avg = [avg + (a - avg)/t for a, avg in zip(self._alpha, self._alpha_avg)]
 
-            # Alla fine del training, usa la media per predizioni
-            self._alpha = self._alpha_avg
-
+            self._alpha = np.array(self._alpha_avg)
 
 
     def _logistic(self, z):
@@ -300,41 +289,31 @@ class LogisticRegression:
         return 1 / (1 + np.exp(-z))
 
     def compute_loss(self, X, y):
-        """
-        Compute the Logistic Regression loss (only for linear kernel).
-        Loss = λ/2 ||w||² + 1/n Σ log(1 + exp(-y_i * (w·x_i + b)))
-        """
         if self.kernel != 'linear':
             raise NotImplementedError("Loss computation is only implemented for linear kernel")
-
         if self._w is None:
             raise ValueError("The model must be trained before computing the loss")
 
-        # Regularization term: λ/2 ||w||²
-        reg_term = (self.lambda_param / 2) * np.dot(self._w, self._w)
+        # Regularization term
+        reg_term = 0.5 * self.lambda_param * np.dot(self._w, self._w)
 
-        # Logistic loss: 1/n Σ log(1 + exp(-y_i * (w·x_i + b)))
+        # Logistic loss with numerical stability
         z = y * (np.dot(X, self._w) + self._b)
-        # Use log1p for numerical stability: log(1 + exp(-z)) = log1p(exp(-z))
-        # For large negative z, exp(-z) is very large, so we use the identity:
-        # log(1 + exp(-z)) = -z + log(1 + exp(z)) for z < 0
-        logistic_losses = np.where(
+        empirical_loss = np.mean(np.where(
             z >= 0,
             np.log1p(np.exp(-z)),
             -z + np.log1p(np.exp(z))
-        )
-        empirical_loss = np.mean(logistic_losses)
+        ))
 
         return reg_term + empirical_loss
+
 
     def predict(self, X):
         if self.kernel == 'linear':
             if self._w is None:
                 raise ValueError("The model must be trained before any prediction")
-
             w = self._w_avg
             b = self._b_avg
-
             z = X.dot(w) + b
             probs = self._logistic(z)
             return np.where(probs >= 0.5, 1, -1)
@@ -343,16 +322,15 @@ class LogisticRegression:
             if len(self._alpha) == 0 or len(self._support_vectors) == 0:
                 raise ValueError("The model must be trained before any prediction")
 
-            predictions = np.zeros(X.shape[0])
-            for i, x in enumerate(X):
-                k_t = np.array([
-                    kernel_function(sv, x, self.kernel, self.degree, self.gamma)
-                    for sv in self._support_vectors
-                ])
-                g = np.dot(self._alpha, k_t)
-                predictions[i] = self._logistic(g)
+            K = np.array([
+                [kernel_function(sv, x, self.kernel, self.degree, self.gamma)
+                for sv in self._support_vectors]
+                for x in X
+            ])
 
-            return np.where(predictions >= 0.5, 1, -1)
+            g = K.dot(self._alpha)
+            probs = self._logistic(g)
+            return np.where(probs >= 0.5, 1, -1)
 
         else:
             raise ValueError(f"Unsupported kernel type: {self.kernel}")

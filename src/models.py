@@ -176,10 +176,9 @@ class LogisticRegression:
     # Threshold for adding support vectors: weight = σ(-y*g) must exceed this threshold
     _WEIGHT_THRESHOLD = 0.1
 
-    def __init__(self, n_iters=1000, lambda_param=0.01, learning_rate=0.01, kernel='linear', degree=2, gamma=1.0, random_state=42, track_loss=False, loss_interval=10):
+    def __init__(self, n_iters=1000, lambda_param=0.01, kernel='linear', degree=2, gamma=1.0, random_state=42, track_loss=False, loss_interval=10):
         self.n_iters = n_iters
         self.lambda_param = lambda_param
-        self.learning_rate = learning_rate
         self.kernel = kernel
         self.degree = degree
         self.gamma = gamma
@@ -220,13 +219,14 @@ class LogisticRegression:
 
                 z_t = y_t * (np.dot(self._w, x_t) + self._b)
 
+                eta = 1 / (self.lambda_param * t)
                 sigma_term = self._logistic(-z_t)
 
                 # Update w with regularization, b without
-                self._w = (1 - self.learning_rate * self.lambda_param) * self._w + \
-                        self.learning_rate * sigma_term * y_t * x_t
+                self._w = (1 - eta * self.lambda_param) * self._w + \
+                        eta * sigma_term * y_t * x_t
 
-                self._b = self._b + self.learning_rate * sigma_term * y_t
+                self._b = self._b + eta * sigma_term * y_t
 
                 # Update running average
                 self._w_avg += self._w
@@ -251,6 +251,9 @@ class LogisticRegression:
                 x_t = X[idx]
                 y_t = y[idx]
 
+                # Learning rate
+                eta = 1 / (self.lambda_param * t)
+
                 # Compute g_t(x_t)
                 g_t = sum(
                     alpha * kernel_function(sv, x_t, self.kernel, self.degree, self.gamma)
@@ -260,8 +263,7 @@ class LogisticRegression:
                 # Continuous weight: σ(-y_t * g_t)
                 weight = self._logistic(-y_t * g_t)
 
-                # Decay: g_t <- (1 - 1/t) * g_t
-                self._alpha = [a * (1 - 1/t) for a in self._alpha]
+                self._alpha = [(1 - eta * self.lambda_param) * a for a in self._alpha]
 
                 # Add only if weight is significant (analogous to margin condition in SVM)
                 # weight = σ(-y_t * g_t) is high when the model is uncertain or makes an error
@@ -308,12 +310,9 @@ class LogisticRegression:
                 raise ValueError("The model must be trained before any prediction")
 
             # Use averaged weights if averaging is enabled
-            if self.use_averaging and self._w_avg is not None:
-                w = self._w_avg
-                b = self._b_avg
-            else:
-                w = self._w
-                b = self._b
+
+            w = self._w_avg
+            b = self._b_avg
 
             predictions = np.zeros(X.shape[0])
             for i in range(X.shape[0]):

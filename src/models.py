@@ -71,6 +71,7 @@ class SVM:
 
         elif self.kernel in ['poly', 'gaussian']:
             self._alpha = []
+            self._alpha_avg = []
             self._support_vectors = []
 
             for t in range(1, self.n_iters + 1):
@@ -96,11 +97,20 @@ class SVM:
                     # Add new kernel: g_t <- g_t + (y_t / λt) * K(x_t, ·)
                     self._support_vectors.append(x_t.copy())
                     self._alpha.append(y_t / (self.lambda_param * t))
+                    self._alpha_avg = np.append(self._alpha_avg, 0.0)
+
+                if len(self._alpha_avg) > 0:
+                    self._alpha_avg = np.array(self._alpha_avg)
+                    self._alpha = np.array(self._alpha)
+                    self._alpha_avg += (self._alpha - self._alpha_avg) / t
 
                 # Track loss at specified intervals
                 if self.track_loss and t % self.loss_interval == 0:
                     loss = self._compute_loss_kernel(X, y)
                     self.loss_history.append((t, loss))
+
+            self._alpha = self._alpha_avg
+
 
     def compute_loss(self, X, y):
         """
@@ -242,9 +252,10 @@ class LogisticRegression:
             self._b_avg /= self.n_iters
 
         elif self.kernel in ['poly', 'gaussian']:
-            self._alpha = []
+            self._alpha = np.array([], dtype=float)
+            self._alpha_avg = np.array([], dtype=float)
             self._support_vectors = []
-            
+
             for t in range(1, self.n_iters + 1):
                 # Random sample selection
                 idx = np.random.randint(0, n_samples)
@@ -255,21 +266,33 @@ class LogisticRegression:
                 eta = 1 / (self.lambda_param * t)
 
                 # Compute g_t(x_t)
-                g_t = sum(
-                    alpha * kernel_function(sv, x_t, self.kernel, self.degree, self.gamma)
-                    for alpha, sv in zip(self._alpha, self._support_vectors)
-                )
+                if len(self._support_vectors) > 0:
+                    k_t = np.array([kernel_function(sv, x_t, self.kernel, self.degree, self.gamma)
+                                    for sv in self._support_vectors])
+                    g_t = np.dot(self._alpha, k_t)
+                else:
+                    g_t = 0.0
 
                 # Continuous weight: σ(-y_t * g_t)
                 weight = self._logistic(-y_t * g_t)
 
-                self._alpha = [(1 - eta * self.lambda_param) * a for a in self._alpha]
+                # Decay current alphas
+                self._alpha *= (1 - eta * self.lambda_param)
 
-                # Add only if weight is significant (analogous to margin condition in SVM)
-                # weight = σ(-y_t * g_t) is high when the model is uncertain or makes an error
+                # Add new support vector only if weight > threshold
                 if weight > self._WEIGHT_THRESHOLD:
                     self._support_vectors.append(x_t.copy())
-                    self._alpha.append((y_t / (self.lambda_param * t)) * weight)
+                    new_alpha = (y_t / (self.lambda_param * t)) * weight
+                    self._alpha = np.append(self._alpha, new_alpha)
+                    self._alpha_avg = np.append(self._alpha_avg, 0.0)  # allinea media
+
+                # Update running average of alphas
+                if len(self._alpha_avg) > 0:
+                    self._alpha_avg += (self._alpha - self._alpha_avg) / t
+
+            # Alla fine del training, usa la media per predizioni
+            self._alpha = self._alpha_avg
+
 
 
     def _logistic(self, z):
@@ -309,28 +332,25 @@ class LogisticRegression:
             if self._w is None:
                 raise ValueError("The model must be trained before any prediction")
 
-            # Use averaged weights if averaging is enabled
-
             w = self._w_avg
             b = self._b_avg
 
-            predictions = np.zeros(X.shape[0])
-            for i in range(X.shape[0]):
-                z = np.dot(w, X[i]) + b
-                predictions[i] = self._logistic(z)
-            return np.where(predictions >= 0.5, 1, -1)
+            z = X.dot(w) + b
+            probs = self._logistic(z)
+            return np.where(probs >= 0.5, 1, -1)
 
         elif self.kernel in ['poly', 'gaussian']:
-            if not self._alpha or not self._support_vectors:
+            if len(self._alpha) == 0 or len(self._support_vectors) == 0:
                 raise ValueError("The model must be trained before any prediction")
 
-            predictions = np.array([
-                self._logistic(sum(
-                    alpha * kernel_function(sv, x, self.kernel, self.degree, self.gamma)
-                    for alpha, sv in zip(self._alpha, self._support_vectors)
-                ))
-                for x in X
-            ])
+            predictions = np.zeros(X.shape[0])
+            for i, x in enumerate(X):
+                k_t = np.array([
+                    kernel_function(sv, x, self.kernel, self.degree, self.gamma)
+                    for sv in self._support_vectors
+                ])
+                g = np.dot(self._alpha, k_t)
+                predictions[i] = self._logistic(g)
 
             return np.where(predictions >= 0.5, 1, -1)
 

@@ -4,7 +4,7 @@ from joblib import Parallel, delayed
 from util import calculate_metric, calculate_metrics
 
 def _evaluate_params(model_class, params, X, y, cv, random_state):
-    model = model_class(**params)
+    model = model_class(**params, random_state=random_state)
     all_scores = cross_val_score(model, X, y, cv=cv, random_state=random_state, metrics=['accuracy', 'precision', 'recall', 'f1'])
     return params, all_scores
 

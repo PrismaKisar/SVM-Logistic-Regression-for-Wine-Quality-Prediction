@@ -12,22 +12,26 @@ def kernel_function(x1, x2, kernel='poly', degree=2, gamma=1.0):
 
 
 class SVM:
-    def __init__(self, n_iters=1000, lambda_param=0.01, random_state=42, kernel='linear', degree=2, gamma=1.0):
+    def __init__(self, n_iters=1000, lambda_param=0.01, random_state=42, kernel='linear', degree=2, gamma=1.0, track_loss=False, loss_interval=10):
         self.n_iters = n_iters
         self.lambda_param = lambda_param
         self.random_state = random_state
         self.kernel = kernel
         self.degree = degree
         self.gamma = gamma
+        self.track_loss = track_loss
+        self.loss_interval = loss_interval
         self._w = None
         self._b = None
         self._alpha = []
         self._support_vectors = []
         self._support_labels = []
+        self.loss_history = []
 
     def fit(self, X, y):
         n_samples, n_features = X.shape
         np.random.seed(self.random_state)
+        self.loss_history = []
 
         if self.kernel == 'linear':
             self._w = np.zeros(n_features)
@@ -47,10 +51,15 @@ class SVM:
                 else:
                     self._w = (1 - 1/t) * self._w
 
+                # Track loss at specified intervals
+                if self.track_loss and t % self.loss_interval == 0:
+                    loss = self.compute_loss(X, y)
+                    self.loss_history.append((t, loss))
+
         elif self.kernel in ['poly', 'gaussian']:
             self._alpha = []
             self._support_vectors = []
-            
+
             for t in range(1, self.n_iters + 1):
                 # Random sample selection
                 idx = np.random.randint(0, n_samples)
@@ -74,7 +83,56 @@ class SVM:
                     # Add new kernel: g_t <- g_t + (y_t / λt) * K(x_t, ·)
                     self._support_vectors.append(x_t.copy())
                     self._alpha.append(y_t / (self.lambda_param * t))
-        
+
+                # Track loss at specified intervals
+                if self.track_loss and t % self.loss_interval == 0:
+                    loss = self._compute_loss_kernel(X, y)
+                    self.loss_history.append((t, loss))
+
+    def compute_loss(self, X, y):
+        """
+        Compute the SVM loss (only for linear kernel).
+        Loss = λ/2 ||w||² + 1/n Σ max(0, 1 - y_i(w·x_i + b))
+        """
+        if self.kernel != 'linear':
+            raise NotImplementedError("Loss computation is only implemented for linear kernel")
+
+        if self._w is None:
+            raise ValueError("The model must be trained before computing the loss")
+
+        n_samples = X.shape[0]
+
+        # Regularization term: λ/2 ||w||²
+        reg_term = (self.lambda_param / 2) * np.dot(self._w, self._w)
+
+        # Hinge loss: 1/n Σ max(0, 1 - y_i(w·x_i + b))
+        margins = y * (np.dot(X, self._w) + self._b)
+        hinge_losses = np.maximum(0, 1 - margins)
+        empirical_loss = np.mean(hinge_losses)
+
+        return reg_term + empirical_loss
+
+    def _compute_loss_kernel(self, X, y):
+        """
+        Compute the SVM loss for kernel methods (approximate).
+        For non-linear kernels, computes empirical hinge loss only.
+        """
+        if self.kernel == 'linear':
+            return self.compute_loss(X, y)
+
+        # For kernel methods, compute empirical hinge loss
+        predictions_scores = np.zeros(X.shape[0])
+        for i in range(X.shape[0]):
+            g = sum(
+                alpha * kernel_function(sv, X[i], self.kernel, self.degree, self.gamma)
+                for alpha, sv in zip(self._alpha, self._support_vectors)
+            )
+            predictions_scores[i] = g
+
+        margins = y * predictions_scores
+        hinge_losses = np.maximum(0, 1 - margins)
+        return np.mean(hinge_losses)
+
     def predict(self, X):
         if self.kernel == 'linear':
             if self._w is None:
@@ -101,7 +159,7 @@ class LogisticRegression:
     # Threshold for adding support vectors: weight = σ(-y*g) must exceed this threshold
     _WEIGHT_THRESHOLD = 0.1
 
-    def __init__(self, n_iters=1000, lambda_param=0.01, learning_rate=0.01, kernel='linear', degree=2, gamma=1.0, random_state=42):
+    def __init__(self, n_iters=1000, lambda_param=0.01, learning_rate=0.01, kernel='linear', degree=2, gamma=1.0, random_state=42, track_loss=False, loss_interval=10):
         self.n_iters = n_iters
         self.lambda_param = lambda_param
         self.learning_rate = learning_rate
@@ -109,11 +167,14 @@ class LogisticRegression:
         self.degree = degree
         self.gamma = gamma
         self.random_state = random_state
+        self.track_loss = track_loss
+        self.loss_interval = loss_interval
         self._w = None
         self._b = None
         self._alpha = None
         self._X_train = None
         self._y_train = None
+        self.loss_history = []
 
     def fit(self, X, y):
         if X.shape[0] != y.shape[0]:
@@ -124,12 +185,13 @@ class LogisticRegression:
 
         n_samples, n_features = X.shape
         np.random.seed(self.random_state)
+        self.loss_history = []
 
         if self.kernel == 'linear':
             self._w = np.zeros(n_features)
             self._b = 0.0
 
-            for _ in range(self.n_iters):
+            for t in range(1, self.n_iters + 1):
                 idx = np.random.randint(0, n_samples)
                 x_t = X[idx]
                 y_t = y[idx]
@@ -143,6 +205,11 @@ class LogisticRegression:
                         self.learning_rate * sigma_term * y_t * x_t
 
                 self._b = self._b + self.learning_rate * sigma_term * y_t
+
+                # Track loss at specified intervals
+                if self.track_loss and t % self.loss_interval == 0:
+                    loss = self.compute_loss(X, y)
+                    self.loss_history.append((t, loss))
 
         elif self.kernel in ['poly', 'gaussian']:
             self._alpha = []
@@ -176,6 +243,34 @@ class LogisticRegression:
     def _logistic(self, z):
         z = np.clip(z, -500, 500)
         return 1 / (1 + np.exp(-z))
+
+    def compute_loss(self, X, y):
+        """
+        Compute the Logistic Regression loss (only for linear kernel).
+        Loss = λ/2 ||w||² + 1/n Σ log(1 + exp(-y_i * (w·x_i + b)))
+        """
+        if self.kernel != 'linear':
+            raise NotImplementedError("Loss computation is only implemented for linear kernel")
+
+        if self._w is None:
+            raise ValueError("The model must be trained before computing the loss")
+
+        # Regularization term: λ/2 ||w||²
+        reg_term = (self.lambda_param / 2) * np.dot(self._w, self._w)
+
+        # Logistic loss: 1/n Σ log(1 + exp(-y_i * (w·x_i + b)))
+        z = y * (np.dot(X, self._w) + self._b)
+        # Use log1p for numerical stability: log(1 + exp(-z)) = log1p(exp(-z))
+        # For large negative z, exp(-z) is very large, so we use the identity:
+        # log(1 + exp(-z)) = -z + log(1 + exp(z)) for z < 0
+        logistic_losses = np.where(
+            z >= 0,
+            np.log1p(np.exp(-z)),
+            -z + np.log1p(np.exp(z))
+        )
+        empirical_loss = np.mean(logistic_losses)
+
+        return reg_term + empirical_loss
 
     def predict(self, X):
         if self.kernel == 'linear':
